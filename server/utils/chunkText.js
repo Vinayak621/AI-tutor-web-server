@@ -13,6 +13,7 @@ export function splitIntoChunks(text, maxTokens) {
   let currentTokens = 0;
 
   for (const para of paragraphs) {
+    console.log(paragraphs.length);
     const paraTokens = encoder.encode(para);
 
     if (currentTokens + paraTokens.length > maxTokens) {

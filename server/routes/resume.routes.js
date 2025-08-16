@@ -9,6 +9,9 @@ import InterviewSession from "../models/InterviewSession.js";
 import { s3Client } from "../config/s3.js";
 import { GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { embedAndStoreResumeContent } from "../utils/vectorUtils.js";
+import { streamToBuffer } from "../utils/parser.js";
+import PdfParse from "pdf-parse";
 
 const router = express.Router();
 
@@ -38,6 +41,16 @@ router.post("/upload", authenticate, upload.single("resume"), async (req, res) =
       Key: req.file.key,
     });
 
+    const response = await s3Client.send(command);
+    const buffer = await streamToBuffer(response.Body);
+    
+    let jobDescriptionText = "";
+    if (req.file.mimetype === "application/pdf") {
+      jobDescriptionText = (await PdfParse(buffer)).text.trim();
+    } else {
+      jobDescriptionText = buffer.toString("utf-8").trim();
+    }
+
     const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
 
     const resume = new Resume({
@@ -48,6 +61,8 @@ router.post("/upload", authenticate, upload.single("resume"), async (req, res) =
     });
 
     await resume.save();
+
+    await embedAndStoreResumeContent(resume._id, jobDescriptionText);
 
     res.status(201).json({
       message: "Resume uploaded",

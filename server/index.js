@@ -6,9 +6,14 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import authRoutes from "./routes/auth.routes.js";
 import resumeRoutes from "./routes/resume.routes.js";
+import TargetJDRoutes from "./routes/targetJD.routes.js";
 import http from "http";
 
 import { setupWebSocket } from "./components/WsServer.js";
+
+// the below imports are for the worker setup
+import { embedJDWorker } from "./worker/embedJDWorker.js";
+import { embedResumeWorker } from "./worker/embedResumeWorker.js";
 
 dotenv.config(); 
 
@@ -20,14 +25,15 @@ app.use(bodyParser.json());
 
 mongoose
   .connect(process.env.MONGO_DB_URL)
-  .then(() => console.log("✅ MongoDB connected"))
-  .catch((err) => console.error("❌ MongoDB error:", err));
+  .then(() => console.log("MongoDB connected"))
+  .catch((err) => console.error("MongoDB error:", err));
 
 const server = http.createServer();
 setupWebSocket(server);
 
 app.use("/api", authRoutes);
 app.use("/api", resumeRoutes);
+app.use("/api", TargetJDRoutes);
 
 const PORT = process.env.PORT || 3000;
 

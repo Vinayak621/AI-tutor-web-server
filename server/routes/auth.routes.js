@@ -81,46 +81,58 @@ router.post("/logout", (req, res) => {
   res.sendStatus(200);
 });
 
-router.get("/auth/google", async (req, res) => {
-  try {
-    const {code} = req.query;
-    const googleRes = await oauth2Client.getToken(code);
-    oauth2Client.setCredentials(googleRes.tokens);
+router.get("/auth/google", (req, res) => {
+  const url = oauth2Client.generateAuthUrl({
+    access_type: "offline",
+    prompt: "consent",
+    scope: ["https://www.googleapis.com/auth/userinfo.email", "https://www.googleapis.com/auth/userinfo.profile"],
+  });
 
-    const userInfo = await axios.get(
-      `https://www.googleapis.com/oauth2/v1/userinfo?alt=json&access_token=${googleRes.tokens.access_token}`
+  res.redirect(url);
+});
+
+router.get("/auth/google/callback", async (req, res) => {
+  try {
+    const { code } = req.query;
+
+    const { tokens } = await oauth2Client.getToken(code);
+    oauth2Client.setCredentials(tokens);
+
+    const userInfoRes = await axios.get(
+      `https://www.googleapis.com/oauth2/v1/userinfo?alt=json&access_token=${tokens.access_token}`
     );
 
-    const { email, name } = userInfo.data;
+    const { email, name } = userInfoRes.data;
 
     let user = await User.findOne({ email });
     if (!user) {
       user = new User({
         name,
         email,
-        password: bcrypt.hashSync(email + process.env.JWT_SECRET, 10), 
+        password: bcrypt.hashSync(email + process.env.JWT_SECRET, 10),
       });
       await user.save();
     }
 
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+    const jwtToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
       expiresIn: "7d",
     });
 
-    res
-      .cookie("token", token, {
-        httpOnly: true,
-        secure: true,
-        sameSite: "None",
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      })
-      .status(200)
-      .json({ message: "Login successful" });
+    res.cookie("token", jwtToken, {
+      httpOnly: true,
+      sameSite: "Lax",
+      secure: false,
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    // ✅ Redirect to frontend
+    res.redirect("http://localhost:8080/dashboard");
 
   } catch (error) {
-    console.error("Error:", error);
-    res.status(500).json({ message: "Server error" });
+    console.error("Google OAuth callback error:", error);
+    res.redirect("http://localhost:8080/login?error=oauth");
   }
 });
+
 
 export default router;

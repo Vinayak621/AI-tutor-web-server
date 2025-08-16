@@ -1,0 +1,21 @@
+version: "3.9"
+services:
+  app:
+    build: .
+    container_name: node_app
+    restart: always
+    ports:
+      - "3000:3000" # maps container 3000 -> host 3000
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    links:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis_server
+    restart: always
+    ports:
+      - "6379:6379"

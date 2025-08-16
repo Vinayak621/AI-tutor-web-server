@@ -5,6 +5,7 @@ export const pinecone = new Pinecone({
 });
 
 const INDEX_NAME = "resume-embeddings";
+const JD_INDEX_NAME = "targetjd-index";
 
 export async function getPineconeIndex() {
   try {
@@ -42,6 +43,44 @@ export async function getPineconeIndex() {
     return pinecone.Index(INDEX_NAME);
   } catch (error) {
     console.error("Error getting Pinecone index:", error);
+    throw error;
+  }
+}
+
+export async function getTargetJDIndex() {
+  try {
+    const existingIndexes = await pinecone.listIndexes();
+    const indexExists = existingIndexes.indexes?.some(index => index.name === JD_INDEX_NAME);
+
+    if (!indexExists) {
+      console.log(`Creating JD index: ${JD_INDEX_NAME}`);
+      await pinecone.createIndex({
+        name: JD_INDEX_NAME,
+        dimension: 1536,
+        metric: 'cosine',
+        spec: {
+          serverless: {
+            cloud: 'aws',
+            region: 'us-east-1',
+          },
+        },
+      });
+
+      let ready = false;
+      while (!ready) {
+        const indexDescription = await pinecone.describeIndex(JD_INDEX_NAME);
+        ready = indexDescription.status?.ready;
+        if (!ready) {
+          console.log("Waiting for JD index to be ready...");
+          await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+      }
+      console.log(`✅ JD Index ${JD_INDEX_NAME} is ready!`);
+    }
+
+    return pinecone.Index(JD_INDEX_NAME);
+  } catch (error) {
+    console.error("Error getting JD Pinecone index:", error);
     throw error;
   }
 }

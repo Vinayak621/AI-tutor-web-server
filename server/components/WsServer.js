@@ -46,7 +46,7 @@ export function setupWebSocket(server) {
         const response = await s3Client.send(command);
         resumeContent = await streamToBuffer(response.Body);
         resumeContent = await PdfParse(resumeContent).then(data => data.text.trim());
-        resumeCache.set(resumeId, { content: resumeContent });
+        // resumeCache.set(resumeId, { content: resumeContent });
       }
     } catch (err) {
       console.error("❌ Failed to fetch resume:", err);
@@ -56,7 +56,7 @@ export function setupWebSocket(server) {
     if (!resumeCache.get(resumeId)?.embedded) {
       try {
         await embedAndStoreResume(resumeId, resumeContent);
-        resumeCache.get(resumeId).embedded = true;
+        // resumeCache.get(resumeId).embedded = true;
       } catch (err) {
         console.error("❌ Embedding failed:", err);
         return ws.close();
