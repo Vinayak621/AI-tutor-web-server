@@ -126,11 +126,11 @@ router.get("/auth/google/callback", async (req, res) => {
     });
 
     // ✅ Redirect to frontend
-    res.redirect("http://localhost:8080/dashboard");
+    res.redirect(`${FRONT_END_URL}/dashboard`);
 
   } catch (error) {
     console.error("Google OAuth callback error:", error);
-    res.redirect("http://localhost:8080/login?error=oauth");
+    res.redirect(`${FRONT_END_URL}/login?error=oauth`);
   }
 });
 
