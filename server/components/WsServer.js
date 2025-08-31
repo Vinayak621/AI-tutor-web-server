@@ -36,6 +36,7 @@ export function setupWebSocket(server) {
         resumeContent = resumeCache.get(resumeId).content;
       } else {
         const resume = await Resume.findById(resumeId);
+        console.log("in socket conn..", resume._id);
         if (!resume?.path) return ws.close();
 
         const command = new GetObjectCommand({
@@ -91,7 +92,10 @@ export function setupWebSocket(server) {
       data: "Hello! I’m your AI Interviewer. Let’s get started!",
     }));
 
-    askNextQuestion(ws);
+    setTimeout(() => {
+      askNextQuestion(ws);
+    }, 2000);
+
 
     ws.on("message", async (msg) => {
       const session = sessionMap.get(ws);
@@ -141,7 +145,7 @@ async function askNextQuestion(ws) {
 
     ws.send(JSON.stringify({
       type: "system",
-      data: `🎓 Interview completed! Your average score is: ${averageScore.toFixed(1)}/10`,
+      data: `Your Interview completed! Your average score is: ${averageScore.toFixed(1)} out of 10`,
     }));
     ws.send(JSON.stringify({ type: "done" }));
     ws.close();
@@ -163,6 +167,7 @@ async function askNextQuestion(ws) {
     ws.send(JSON.stringify({ type: "question", data: question }));
 
     interview.questions.push({ question });
+    
     await interview.save();
 
     session.index++;

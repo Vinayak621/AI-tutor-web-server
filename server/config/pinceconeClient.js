@@ -5,7 +5,7 @@ export const pinecone = new Pinecone({
 });
 
 const INDEX_NAME = "resume-embeddings";
-const JD_INDEX_NAME = "targetjd-index";
+const JD_INDEX_NAME = "targetjd-embeddings";
 
 export async function getPineconeIndex() {
   try {
@@ -17,7 +17,7 @@ export async function getPineconeIndex() {
       console.log(`Creating index: ${INDEX_NAME}`);
       await pinecone.createIndex({
         name: INDEX_NAME,
-        dimension: 1024, 
+        dimension: 1536, 
         metric: 'cosine',
         spec: {
           serverless: {

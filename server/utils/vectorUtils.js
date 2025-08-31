@@ -144,3 +144,35 @@ Example output:
   return suggestions;
 }
 
+export async function fetchVectorWithRetry(index, vectorId, maxRetries = 3, delayMs = 2000) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`Attempt ${attempt} to fetch vector: ${vectorId}`);
+      
+      const result = await index.fetch(vectorId);
+      
+      if (result.records && result.records[vectorId]) {
+        console.log(`Successfully found vector ${vectorId} on attempt ${attempt}`);
+        return result;
+      }
+      
+      if (attempt < maxRetries) {
+        console.log(`Vector ${vectorId} not found, waiting ${delayMs}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+        delayMs *= 1.5;
+      }
+      
+    } catch (error) {
+      console.error(`Error fetching vector ${vectorId} on attempt ${attempt}:`, error);
+      
+      if (attempt === maxRetries) {
+        throw error;
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+      delayMs *= 1.5;
+    }
+  }
+  
+  throw new Error(`Vector ${vectorId} not found after ${maxRetries} attempts`);
+}

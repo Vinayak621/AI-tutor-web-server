@@ -8,7 +8,7 @@ import TargetJD from "../models/TargetJD.js";
 import { s3Client } from "../config/s3.js";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { embedAndStoreJD, generateResumeSuggestions } from "../utils/vectorUtils.js";
+import { embedAndStoreJD, fetchVectorWithRetry, generateResumeSuggestions } from "../utils/vectorUtils.js";
 import { streamToBuffer } from "../utils/parser.js";
 import PdfParse from "pdf-parse";
 import { extname } from "path";
@@ -97,12 +97,20 @@ router.post("/confidence-score", authenticate,async (req, res) => {
     const vectorId = jdId.startsWith("jd-") ? jdId : `jd-${jdId}`;
 
     const [resumeVector, jdVector] = await Promise.all([
-      index1.fetch([`resume-${resumeId}`]),
-      index2.fetch([vectorId])
+      fetchVectorWithRetry(index1, `resume-${resumeId}`, 3, 2000),
+      fetchVectorWithRetry(index2, `jd-${jdId}`, 3, 2000)
     ]);
 
     console.log("resumeVector", resumeVector);
     console.log("jdVector", jdVector);
+    console.log(jdId);
+
+      const queryResponse = await index2.query({
+      vector: new Array(1536).fill(0),
+      topK: 10,
+      includeMetadata: true
+      });
+    console.log("Available JD vectors:", queryResponse.matches.map(m => m.id));
 
     const resumeEmbedding = resumeVector.records[`resume-${resumeId}`];
     const jdEmbedding = jdVector.records[`jd-${jdId}`];

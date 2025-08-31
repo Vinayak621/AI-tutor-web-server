@@ -36,6 +36,26 @@ router.post("/upload", authenticate, upload.single("resume"), async (req, res) =
   if (!req.file) return res.status(400).json({ message: "No PDF uploaded" });
 
   try {
+
+    const resume_exists = await Resume.findOne({ filename: req.file.originalname, user: req.user.userId });
+
+    if (resume_exists) {
+      const command = new GetObjectCommand({
+        Bucket: process.env.AWS_S3_BUCKET,
+        Key: resume_exists.path,
+      });
+      console.log("resume_exists._id",resume_exists._id);
+
+      const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+
+      return res.status(200).json({
+        message: "Resume already exists, using existing file",
+        resumeId: resume_exists._id,
+        fileUrl: signedUrl,
+      });
+    }
+  
+
     const command = new GetObjectCommand({
       Bucket: process.env.AWS_S3_BUCKET,
       Key: req.file.key,
@@ -128,7 +148,7 @@ router.get("/interview/completed", authenticate, async (req, res) => {
       userId: req.user.userId,
       status: "completed",
     })
-      .select("resumeId questions completedAt startedAt")
+      .select("resumeId questions completedAt startedAt score")
       .populate("resumeId", "filename");
 
     const groupedByResume = {};
@@ -136,7 +156,6 @@ router.get("/interview/completed", authenticate, async (req, res) => {
     for (const session of sessions) {
       const resumeId = session.resumeId?._id?.toString() || "unknown";
       const resumeName = session.resumeId?.filename || "Unknown";
-      console.log(session.score);
 
       if (!groupedByResume[resumeId]) {
         groupedByResume[resumeId] = {
@@ -166,6 +185,53 @@ router.get("/interview/completed", authenticate, async (req, res) => {
     res.status(500).json({ message: "Failed to retrieve completed sessions" });
   }
 });
+
+router.get("/interview/session/:id", authenticate, async (req, res) => {
+
+  try {
+    const { id } = req.params;
+
+  
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: "Invalid session ID format" });
+    }
+
+    const session = await InterviewSession.findOne({
+      _id: id,
+      userId: req.user.userId,
+      status: "completed"
+    })
+      .select("resumeId questions completedAt startedAt score status")
+      .populate("resumeId", "filename");
+
+    if (!session) {
+      return res.status(404).json({ message: "Interview session not found" });
+    }
+
+    const sessionDetails = {
+      _id: session._id,
+      sessionId: session._id,
+      resumeId: session.resumeId?._id?.toString() || "unknown",
+      resumeName: session.resumeId?.filename || "Unknown",
+      startedAt: session.startedAt,
+      completedAt: session.completedAt,
+      score: session.score,
+      status: session.status,
+      questions: session.questions.map(q => ({
+        question: q.question,
+        answer: q.answer,
+        responseTime: q.responseTime,
+        status: q.status,
+      }))
+    };
+
+    res.status(200).json(sessionDetails);
+  } catch (err) {
+    console.error("Error fetching session details:", err);
+    res.status(500).json({ message: "Failed to retrieve session details" });
+  }
+});
+
 
 router.delete("/interview-session/:id",authenticate, async (req,res)=> {
   const sessionId = req.params.id;
