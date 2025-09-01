@@ -101,7 +101,7 @@ router.get("/auth/google/callback", async (req, res) => {
     const oauth2Client = new google.auth.OAuth2(
       GOOGLE_CLIENT_ID,
       GOOGLE_CLIENT_SECRET,
-      "https://career-ai.online/node/api/auth/google/callback"
+      "https://career-ai.online/api/auth/google/callback"
     );
 
     const { tokens } =  await oauth2Client.getToken(code);
