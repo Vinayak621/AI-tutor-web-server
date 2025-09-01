@@ -95,7 +95,16 @@ router.get("/auth/google/callback", async (req, res) => {
   try {
     const { code } = req.query;
 
-    const { tokens } = await oauth2Client.getToken(code);
+    const GOOGLE_CLIENT_ID = process.env.CLIENT_ID;
+    const GOOGLE_CLIENT_SECRET = process.env.CLIENT_SECRET;
+    
+    const oauth2Client = new google.auth.OAuth2(
+      GOOGLE_CLIENT_ID,
+      GOOGLE_CLIENT_SECRET,
+      "https://career-ai.online/api/auth/google/callback"
+    );
+
+    const { tokens } =  oauth2Client.getToken(code);
     oauth2Client.setCredentials(tokens);
 
     const userInfoRes = await axios.get(
