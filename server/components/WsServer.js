@@ -18,17 +18,24 @@ export function setupWebSocket(server) {
 
   wss.on("connection", async (ws, req) => {
     const token = req.headers.cookie?.split("token=")[1]?.split(";")[0];
-    if (!token) return ws.close();
+    if (!token) {
+      console.log("closed for no token");
+      return ws.close();
+    }
 
     let user;
     try {
       user = jwt.verify(token, process.env.JWT_SECRET);
     } catch {
+      console.log("closed for invalid JWT");
       return ws.close();
     }
 
     const { resumeId } = parseUrl(req.url, true).query;
-    if (!resumeId) return ws.close();
+    if (!resumeId) {
+      console.log("closed for no resumeId");
+      return ws.close();
+    }
 
     let resumeContent = "";
     try {
